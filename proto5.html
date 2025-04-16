@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Budget visuel optimisé</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-image: url('https://www.transparenttextures.com/patterns/wood-pattern.png');
+      background-color: #f3f3f3;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    #zone-depart {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px;
+      border: 2px dashed #aaa;
+      min-height: 100px;
+      margin-bottom: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .billet {
+      width: 70px;
+      height: 40px;
+      text-align: center;
+      line-height: 40px;
+      font-weight: bold;
+      cursor: grab;
+      user-select: none;
+      border-radius: 6px;
+    }
+
+    .b100 { background-color: #2e8b57; color: white; }
+    .b50  { background-color: #f4aa42; }
+    .b20  { background-color: #5fb4b4; }
+    .b10  { background-color: #b03a48; }
+    .b5   { background-color: #c0c0c0; }
+
+    .zones-container {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+    }
+
+    .zone {
+      flex: 1;
+      min-height: 150px;
+      border: 2px dashed #aaa;
+      padding: 10px;
+      background-color: #fdfdfd;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .zone-label {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .zone-wrapper {
+      flex: 1;
+    }
+
+    .zone-total {
+      text-align: center;
+      margin-top: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #e0e0e0;
+      color: #333;
+      border: none;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Budget visuel (Total 1015€)</h2>
+
+  <div class="zone-label">Zone de départ</div>
+  <div id="zone-depart"></div>
+
+  <div class="zones-container">
+    <div class="zone-wrapper">
+      <div class="zone-label">Maison</div>
+      <div id="zone-0" class="zone"></div>
+      <div id="total-0" class="zone-total">Total : 0€</div>
+    </div>
+    <div class="zone-wrapper">
+      <div class="zone-label">Alimentation</div>
+      <div id="zone-1" class="zone"></div>
+      <div id="total-1" class="zone-total">Total : 0€</div>
+    </div>
+    <div class="zone-wrapper">
+      <div class="zone-label">Dépenses</div>
+      <div id="zone-2" class="zone"></div>
+      <div id="total-2" class="zone-total">Total : 0€</div>
+    </div>
+    <div class="zone-wrapper">
+      <div class="zone-label">Prévu</div>
+      <div id="zone-3" class="zone"></div>
+      <div id="total-3" class="zone-total">Total : 0€</div>
+    </div>
+  </div>
+
+  <button onclick="reinitialiser()">Réinitialiser</button>
+
+  <script>
+    const zoneDepart = document.getElementById('zone-depart');
+    const zones = [
+      document.getElementById('zone-0'),
+      document.getElementById('zone-1'),
+      document.getElementById('zone-2'),
+      document.getElementById('zone-3'),
+      zoneDepart
+    ];
+
+    const billets = [
+      { val: 100, class: 'b100', qty: 2 },
+      { val: 50,  class: 'b50',  qty: 9 },
+      { val: 20,  class: 'b20',  qty: 11 },
+      { val: 10,  class: 'b10',  qty: 10 },
+      { val: 5,   class: 'b5',   qty: 11 }
+    ];
+
+    let idCounter = 0;
+
+    function creerBillets() {
+      billets.forEach(b => {
+        for (let i = 0; i < b.qty; i++) {
+          const billet = document.createElement('div');
+          billet.className = `billet ${b.class}`;
+          billet.textContent = b.val + '€';
+          billet.setAttribute('draggable', 'true');
+          billet.id = `b${idCounter++}`;
+          billet.dataset.valeur = b.val;
+          billet.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/plain', e.target.id);
+          });
+          zoneDepart.appendChild(billet);
+        }
+      });
+    }
+
+    creerBillets();
+
+    function mettreAJourTotaux() {
+      for (let i = 0; i < 4; i++) {
+        const zone = document.getElementById(`zone-${i}`);
+        const billets = zone.querySelectorAll('.billet');
+        let total = 0;
+        billets.forEach(b => total += parseInt(b.dataset.valeur));
+        document.getElementById(`total-${i}`).textContent = `Total : ${total}€`;
+      }
+    }
+
+    function enregistrerEtat() {
+      const placement = {};
+      document.querySelectorAll('.billet').forEach(b => {
+        placement[b.id] = b.parentElement.id;
+      });
+      localStorage.setItem('budgetPlacement', JSON.stringify(placement));
+    }
+
+    function restaurerEtat() {
+      const data = JSON.parse(localStorage.getItem('budgetPlacement'));
+      if (!data) return;
+      for (const [id, zoneId] of Object.entries(data)) {
+        const billet = document.getElementById(id);
+        const zone = document.getElementById(zoneId);
+        if (billet && zone) zone.appendChild(billet);
+      }
+      mettreAJourTotaux();
+    }
+
+    document.querySelectorAll('.zone, #zone-depart').forEach(zone => {
+      zone.addEventListener('dragover', e => e.preventDefault());
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        const id = e.dataTransfer.getData('text/plain');
+        const el = document.getElementById(id);
+        if (el) zone.appendChild(el);
+        mettreAJourTotaux();
+        enregistrerEtat();
+      });
+    });
+
+    function reinitialiser() {
+      const tousLesBillets = document.querySelectorAll('.billet');
+      tousLesBillets.forEach(b => zoneDepart.appendChild(b));
+      mettreAJourTotaux();
+      localStorage.removeItem('budgetPlacement');
+    }
+
+    window.addEventListener('load', () => {
+      restaurerEtat();
+    });
+  </script>
+
+</body>
+</html>
